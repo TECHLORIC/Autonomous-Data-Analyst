@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analysis Report</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #333; max-width: 900px; margin: 0 auto; padding: 2rem; }
+        h1, h2, h3 { color: #1a202c; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem; }
+        .header { text-align: center; margin-bottom: 3rem; }
+        .meta-card { background: #f7fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1.5rem; margin-bottom: 2rem; }
+        .meta-item { margin-bottom: 0.5rem; }
+        .meta-label { font-weight: bold; color: #4a5568; }
+        .insight-section { margin-top: 2rem; font-size: 1.1rem; line-height: 1.8; }
+        .step-card { border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 1.5rem; overflow: hidden; }
+        .step-header { background: #edf2f7; padding: 1rem; font-weight: bold; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; }
+        .step-body { padding: 1rem; }
+        pre { background: #2d3748; color: #cbd5e0; padding: 1rem; border-radius: 4px; overflow-x: auto; font-family: monospace; }
+        .results-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        .results-table th, .results-table td { border: 1px solid #e2e8f0; padding: 0.5rem; text-align: left; }
+        .results-table th { background: #edf2f7; }
+        .footer { margin-top: 4rem; text-align: center; font-size: 0.875rem; color: #718096; border-top: 1px solid #e2e8f0; padding-top: 1rem; }
+        .badge { background: #4299e1; color: white; padding: 0.2rem 0.6rem; border-radius: 9999px; font-size: 0.8rem; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Autonomous Data Analysis Report</h1>
+        <p>Generated on {{ generated_at }}</p>
+    </div>
+
+    <div class="meta-card">
+        <div class="meta-item"><span class="meta-label">Run ID:</span> {{ run.id }}</div>
+        <div class="meta-item"><span class="meta-label">Dataset ID:</span> {{ dataset.id }}</div>
+        <div class="meta-item"><span class="meta-label">File Name:</span> {{ dataset.filename }}</div>
+        <div class="meta-item"><span class="meta-label">User Query:</span> <strong style="color: #2b6cb0;">{{ run.question }}</strong></div>
+        <div class="meta-item"><span class="meta-label">Status:</span> <span class="badge">{{ run.status }}</span></div>
+    </div>
+
+    {% if insights_html %}
+    <h2>Executive Summary & Insights</h2>
+    <div class="insight-section">
+        {{ insights_html | safe }}
+    </div>
+    {% endif %}
+
+    <h2>Analysis Steps</h2>
+    {% for step in steps %}
+    <div class="step-card">
+        <div class="step-header">
+            <span>{{ loop.index }}. Task: {{ step.task_description }}</span>
+            <span class="badge" style="background: #48bb78;">{{ step.tool_name | upper }}</span>
+        </div>
+        <div class="step-body">
+            {% if step.query_executed %}
+            <h4>Query / Code:</h4>
+            <pre>{{ step.query_executed }}</pre>
+            {% endif %}
+
+            {% if step.results and step.results | length > 0 %}
+            <h4>Sample Results:</h4>
+            {% if step.results[0] is mapping %}
+            <div style="overflow-x: auto;">
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            {% for key in step.results[0].keys() %}
+                            <th>{{ key }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in step.results[:10] %}
+                        <tr>
+                            {% for value in row.values() %}
+                            <td>{{ value }}</td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% if step.results|length > 10 %}
+            <p style="font-size: 0.8rem; color: #718096; margin-top: 0.5rem;">* Showing first 10 rows</p>
+            {% endif %}
+            {% else %}
+            <pre>{{ step.results }}</pre>
+            {% endif %}
+            {% endif %}
+        </div>
+    </div>
+    {% else %}
+    <p>No analysis steps were recorded.</p>
+    {% endfor %}
+
+    <div class="footer">
+        Powered by Autonomous Data Analyst Platform
+    </div>
+
+</body>
+</html>
