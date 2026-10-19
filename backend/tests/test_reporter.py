@@ -7,7 +7,19 @@ from app.services.llm import LLMService
 @pytest.mark.anyio
 async def test_reporter_describes_computed_rows() -> None:
     mock_llm = MagicMock(spec=LLMService)
-    mock_llm.generate = AsyncMock(return_value='{"executive_answer": "It is good.", "key_findings": [], "trends_and_anomalies": [], "caveats": [], "next_questions": []}')
+    
+    # Mocking the new Executive BI schema
+    mock_payload = '''
+    {
+      "status": "success",
+      "query": "Is it good?",
+      "executive_summary": {
+        "headline": "It is good.",
+        "context": "Metrics indicate positive performance."
+      }
+    }
+    '''
+    mock_llm.generate = AsyncMock(return_value=mock_payload)
     
     reporter = InsightReporter(llm=mock_llm)
     insights = await reporter.generate(
@@ -16,5 +28,7 @@ async def test_reporter_describes_computed_rows() -> None:
         results=[{"tool": "sql", "results": [{"total": 10}]}]
     )
 
-    assert insights["executive_answer"] == "It is good."
+    assert insights["executive_summary"]["headline"] == "It is good."
+    assert "kpi_cards" in insights  # Fallback logic should add this
     assert mock_llm.generate.call_count == 1
+

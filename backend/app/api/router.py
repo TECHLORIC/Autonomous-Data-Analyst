@@ -15,6 +15,10 @@ v1_router.include_router(datasets_router)
 v1_router.include_router(agent_router)
 v1_router.include_router(analyze_router)
 
+# Dashboard route
+from app.api.v1.dashboard import router as dashboard_router
+v1_router.include_router(dashboard_router)
+
 # Main API Router
 api_router = APIRouter()
 
@@ -27,3 +31,4 @@ api_router.include_router(auth_router)
 api_router.include_router(datasets_router)
 api_router.include_router(agent_router)
 api_router.include_router(analyze_router)
+api_router.include_router(dashboard_router)

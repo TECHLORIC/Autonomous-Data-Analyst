@@ -122,7 +122,7 @@ async def analyze(
         logger.exception("FAILED TO RUN ANALYSIS")
         raise HTTPException(
             status_code=500,
-            detail="Analysis failed.",
+            detail=f"Analysis failed: {str(exc)}",
         ) from exc
 
 

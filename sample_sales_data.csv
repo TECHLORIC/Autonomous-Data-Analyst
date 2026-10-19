@@ -1,0 +1,21 @@
+date,region,category,sales_amount,units_sold,customer_segment,satisfaction_score
+2026-01-05,North,Cloud Services,14500,29,Enterprise,4.8
+2026-01-12,South,Hardware,8200,41,SMB,4.2
+2026-01-18,East,Subscriptions,19400,120,Consumer,4.5
+2026-01-25,West,Consulting,12000,15,Enterprise,4.9
+2026-02-02,North,Cloud Services,16800,34,Enterprise,4.7
+2026-02-09,South,Hardware,7400,37,SMB,3.9
+2026-02-16,East,Subscriptions,22100,138,Consumer,4.6
+2026-02-23,West,Consulting,14500,18,Enterprise,4.8
+2026-03-04,North,Cloud Services,21000,42,Enterprise,4.9
+2026-03-11,South,Hardware,9100,45,SMB,4.3
+2026-03-18,East,Subscriptions,25400,158,Consumer,4.7
+2026-03-25,West,Consulting,17200,21,Enterprise,5.0
+2026-04-06,North,Cloud Services,23500,47,Enterprise,4.8
+2026-04-13,South,Hardware,6800,34,SMB,3.8
+2026-04-20,East,Subscriptions,28900,180,Consumer,4.6
+2026-04-27,West,Consulting,19800,24,Enterprise,4.9
+2026-05-05,North,Cloud Services,26200,52,Enterprise,4.9
+2026-05-12,South,Hardware,10400,52,SMB,4.4
+2026-05-19,East,Subscriptions,31200,195,Consumer,4.8
+2026-05-26,West,Consulting,22400,28,Enterprise,5.0

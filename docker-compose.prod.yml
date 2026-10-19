@@ -22,6 +22,7 @@ services:
       DEBUG: "false"
       DATABASE_URL: postgresql+asyncpg://analyst:${POSTGRES_PASSWORD}@postgres:5432/autonomous_analyst
       GROQ_API_KEY: ${GROQ_API_KEY}
+      GROQ_MODEL: ${GROQ_MODEL:-openai/gpt-oss-120b}
       REDIS_URL: redis://redis:6379/0
     ports:
       - "8000:8000"
@@ -44,6 +45,7 @@ services:
       ENVIRONMENT: production
       DATABASE_URL: postgresql+asyncpg://analyst:${POSTGRES_PASSWORD}@postgres:5432/autonomous_analyst
       GROQ_API_KEY: ${GROQ_API_KEY}
+      GROQ_MODEL: ${GROQ_MODEL:-openai/gpt-oss-120b}
       REDIS_URL: redis://redis:6379/0
     volumes:
       - uploads_data:/app/storage/uploads
