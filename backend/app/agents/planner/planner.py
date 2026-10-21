@@ -43,9 +43,16 @@ Rules:
 2. Use Python for statistical analysis, machine learning, clustering, forecasting, and regressions.
 3. Never invent column names.
 4. Only use columns from the dataset profile.
-5. Keep the plan as small as possible.
+5. Keep the plan as small as possible (2 to 4 steps maximum).
 6. Return ONLY valid JSON.
 7. DO NOT generate steps for creating charts, plots, or visualizations. The UI automatically handles charting.
+8. When the user asks for a comprehensive report, 360-degree insights, or general dataset overview:
+   - Formulate 2 to 4 focused aggregation steps covering key business perspectives:
+     * Step 1: Overall KPIs (compute SUM of key metric like sales/revenue, COUNT of orders/customers, AVG).
+     * Step 2: Product / Category breakdown (GROUP BY primary category or product line, ORDER BY sum DESC LIMIT 10).
+     * Step 3: Geographic or Segment breakdown (GROUP BY territory/country/region/dealsize, ORDER BY sum DESC LIMIT 10).
+     * Step 4: Temporal trend (if date/year/month is present, group by timeframe/year/month).
+   - ALWAYS specify aggregation (SUM, COUNT, AVG, GROUP BY) in SQL step descriptions. NEVER select unbounded raw rows without aggregation.
 
 For Python operations, use one of:
 
@@ -108,7 +115,6 @@ Dataset profile:
 
 {json.dumps(
     dataset_profile,
-    indent=2,
     default=str,
 )}
 

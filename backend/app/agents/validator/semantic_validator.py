@@ -4,6 +4,20 @@ from typing import Any
 from app.services.llm import LLMService
 
 
+def _compact_results_for_llm(results: list[dict[str, Any]], max_rows: int = 15) -> list[dict[str, Any]]:
+    compacted = []
+    for step in results:
+        step_dict = dict(step)
+        raw_rows = step_dict.get("results")
+        if isinstance(raw_rows, list) and len(raw_rows) > max_rows:
+            step_dict["results"] = raw_rows[:max_rows]
+            step_dict["_truncated"] = True
+            step_dict["_total_rows"] = len(raw_rows)
+            step_dict["_note"] = f"Displaying top {max_rows} of {len(raw_rows)} rows for semantic check."
+        compacted.append(step_dict)
+    return compacted
+
+
 class SemanticValidator:
 
     SYSTEM_PROMPT = """
@@ -46,6 +60,7 @@ Required format:
         results: list[dict[str, Any]],
     ) -> dict[str, Any]:
 
+        compacted_results = _compact_results_for_llm(results, max_rows=15)
         prompt = f"""
 User question:
 
@@ -53,19 +68,11 @@ User question:
 
 Analysis plan:
 
-{json.dumps(
-    plan,
-    indent=2,
-    default=str,
-)}
+{json.dumps(plan, default=str)}
 
 Analysis results:
 
-{json.dumps(
-    results,
-    indent=2,
-    default=str,
-)}
+{json.dumps(compacted_results, default=str)}
 
 Determine whether the analysis correctly answers
 the user's question.

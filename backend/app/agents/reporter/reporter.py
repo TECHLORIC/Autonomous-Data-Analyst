@@ -4,6 +4,20 @@ from typing import Any
 from app.services.llm import LLMService
 
 
+def _compact_results_for_llm(results: list[dict[str, Any]], max_rows: int = 25) -> list[dict[str, Any]]:
+    compacted = []
+    for step in results:
+        step_dict = dict(step)
+        raw_rows = step_dict.get("results")
+        if isinstance(raw_rows, list) and len(raw_rows) > max_rows:
+            step_dict["results"] = raw_rows[:max_rows]
+            step_dict["_truncated"] = True
+            step_dict["_total_rows"] = len(raw_rows)
+            step_dict["_note"] = f"Displaying top {max_rows} of {len(raw_rows)} rows to stay within LLM context limit."
+        compacted.append(step_dict)
+    return compacted
+
+
 class InsightReporter:
     """Builds a concise traceable summary from computed results only."""
 
@@ -30,6 +44,15 @@ Your sole responsibility is to synthesize these computation results into an exec
 3. TIME-SERIES & TIMEFRAME ANCHORING:
    - If the user query states relative terms ("this month", "last quarter"), anchor the analysis to the maximum timestamp recorded in the dataset.
    - Explicitly list the resolved `date_range` in the payload.
+
+4. MULTI-PERSPECTIVE SYNTHESIS:
+   - When the user requests a comprehensive report, 360-degree insights, or cross-perspective analysis, synthesize across all observed dimensions in the results:
+     * Revenue & Temporal Dynamics (growth trajectory, seasonality, quarterly pacing)
+     * Product / Category Portfolio (core drivers vs underperforming lines)
+     * Geographic / Market Footprint (dominant territories vs expansion areas)
+     * Deal Size / Tier Structure (medium wholesale vs small/large contracts)
+     * Customer & Operational Health (concentration risk, fulfillment/shipping rate)
+   - In `kpi_cards`, supply essential executive metrics (Total Revenue, Units, Order Volume, AOV, Active Accounts, Fulfillment Rate).
 
 ---
 
@@ -106,15 +129,16 @@ Your response must strictly match this JSON schema:
         plan: dict[str, Any],
         results: list[dict[str, Any]]
     ) -> dict[str, Any]:
+        compacted_results = _compact_results_for_llm(results, max_rows=25)
         prompt = f"""
 User question:
 {question}
 
 Analysis plan:
-{json.dumps(plan, indent=2, default=str)}
+{json.dumps(plan, default=str)}
 
 Analysis results:
-{json.dumps(results, indent=2, default=str)}
+{json.dumps(compacted_results, default=str)}
 
 Generate the insights based on the analysis results above.
 """
@@ -152,6 +176,22 @@ Generate the insights based on the analysis results above.
             
         insights.setdefault("kpi_cards", [])
         insights.setdefault("visualizations", [])
+
+        # Normalize visualizations so x_axis_key and y_axis_key always align with data row keys
+        for viz in insights.get("visualizations", []):
+            x_key = viz.get("x_axis_key") or "category_or_date"
+            y_key = viz.get("y_axis_key") or "value"
+            for row in viz.get("data", []):
+                if isinstance(row, dict):
+                    if "value" in row and y_key not in row:
+                        row[y_key] = row["value"]
+                    elif y_key in row and "value" not in row:
+                        row["value"] = row[y_key]
+                    
+                    if "category_or_date" in row and x_key not in row:
+                        row[x_key] = row["category_or_date"]
+                    elif x_key in row and "category_or_date" not in row:
+                        row["category_or_date"] = row[x_key]
         
         if "performance_breakdown" not in insights:
             insights["performance_breakdown"] = {

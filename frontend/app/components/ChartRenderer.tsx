@@ -37,9 +37,69 @@ export default function ChartRenderer({ spec }: { spec: VisualizationSpec }) {
     takeaway 
   } = spec;
 
+  // 1. Dynamic Key Resolution Helpers
+  const getYValue = (d: Record<string, unknown>): number => {
+    if (!d || typeof d !== 'object') return 0;
+
+    // Direct key match
+    if (d[y_axis_key] !== undefined && d[y_axis_key] !== null) {
+      const v = typeof d[y_axis_key] === 'number' 
+        ? d[y_axis_key] 
+        : Number(String(d[y_axis_key]).replace(/[^0-9.-]+/g, ''));
+      if (Number.isFinite(v)) return v;
+    }
+
+    // Common metric key fallbacks
+    const fallbacks = ['value', 'val', 'sales', 'total_sales', 'total', 'count', 'amount', 'revenue', 'y'];
+    for (const fb of fallbacks) {
+      if (d[fb] !== undefined && d[fb] !== null) {
+        const v = typeof d[fb] === 'number' 
+          ? d[fb] 
+          : Number(String(d[fb]).replace(/[^0-9.-]+/g, ''));
+        if (Number.isFinite(v)) return v;
+      }
+    }
+
+    // Fallback: any numeric property in row
+    for (const [k, v] of Object.entries(d)) {
+      if (k !== 'id' && k !== 'chart_id') {
+        const parsed = typeof v === 'number' ? v : Number(String(v).replace(/[^0-9.-]+/g, ''));
+        if (Number.isFinite(parsed)) return parsed;
+      }
+    }
+
+    return 0;
+  };
+
+  const getXLabel = (d: Record<string, unknown>): string => {
+    if (!d || typeof d !== 'object') return '';
+
+    // Direct match
+    if (d[x_axis_key] !== undefined && d[x_axis_key] !== null && String(d[x_axis_key]).trim() !== '') {
+      return String(d[x_axis_key]);
+    }
+
+    // Common dimension/label key fallbacks
+    const fallbacks = ['category_or_date', 'category', 'date', 'month', 'label', 'name', 'x', 'dimension', 'productline', 'country'];
+    for (const fb of fallbacks) {
+      if (d[fb] !== undefined && d[fb] !== null && String(d[fb]).trim() !== '') {
+        return String(d[fb]);
+      }
+    }
+
+    // Fallback: first non-numeric string property
+    for (const v of Object.values(d)) {
+      if (typeof v === 'string' && isNaN(Number(v)) && v.trim() !== '') {
+        return v;
+      }
+    }
+
+    return '';
+  };
+
   const width = 760;
   const height = 360;
-  const paddingLeft = 65;
+  const paddingLeft = 70;
   const paddingRight = 35;
   const paddingTop = 40;
   const paddingBottom = 75;
@@ -47,13 +107,12 @@ export default function ChartRenderer({ spec }: { spec: VisualizationSpec }) {
   const graphWidth = width - paddingLeft - paddingRight;
   const graphHeight = height - paddingTop - paddingBottom;
 
-  const yValues = chartData.map((d) => {
-    const val = Number(d[y_axis_key]);
-    return Number.isFinite(val) ? val : 0;
-  });
+  const yValues = chartData.map((d) => getYValue(d as Record<string, unknown>));
 
-  const maxY = Math.max(...yValues, 1);
-  const minY = Math.min(...yValues, 0);
+  const rawMaxY = Math.max(...yValues, 0);
+  const rawMinY = Math.min(...yValues, 0);
+  const maxY = rawMaxY > 0 ? rawMaxY * 1.08 : 1;
+  const minY = Math.min(rawMinY, 0);
   const rangeY = maxY - minY || 1;
 
   const scaleY = (val: number) => {
@@ -73,7 +132,13 @@ export default function ChartRenderer({ spec }: { spec: VisualizationSpec }) {
     return val.toLocaleString(undefined, { maximumFractionDigits: 1 });
   };
 
-  // Render Horizontal Gridlines
+  const formatValueLabel = (val: number) => {
+    if (val >= 1_000_000) return `$${(val / 1_000_000).toFixed(2)}M`;
+    if (val >= 1_000) return `$${val.toLocaleString()}`;
+    return val.toLocaleString();
+  };
+
+  // Render Horizontal Gridlines & Y-Axis Labels
   const renderGrid = () => {
     const ticks = 4;
     return Array.from({ length: ticks + 1 }).map((_, i) => {
@@ -106,13 +171,20 @@ export default function ChartRenderer({ spec }: { spec: VisualizationSpec }) {
     });
   };
 
-  // Render X-Axis Labels
+  // Render X-Axis Labels (adaptive step so labels never collide)
   const renderXAxis = () => {
+    const stride = chartData.length > 14 ? Math.ceil(chartData.length / 10) : 1;
+
     return chartData.map((d, i) => {
       const x = scaleX(i);
-      const rawLabel = String(d[x_axis_key] ?? '');
+      const rawLabel = getXLabel(d as Record<string, unknown>);
       const label = rawLabel.length > 14 ? `${rawLabel.substring(0, 13)}…` : rawLabel;
       const isHovered = hoveredIndex === i;
+
+      // Stride skipping for dense datasets (e.g. 29 monthly points), but always show hovered or last
+      if (stride > 1 && i % stride !== 0 && i !== chartData.length - 1 && !isHovered) {
+        return null;
+      }
 
       return (
         <g key={i}>
@@ -121,7 +193,7 @@ export default function ChartRenderer({ spec }: { spec: VisualizationSpec }) {
             y={height - paddingBottom + 24}
             fontSize="11"
             fill={isHovered ? '#1e293b' : '#64748b'}
-            fontWeight={isHovered ? '600' : '400'}
+            fontWeight={isHovered ? '700' : '500'}
             textAnchor="end"
             transform={`rotate(-35 ${x} ${height - paddingBottom + 24})`}
             className="select-none transition-colors"
@@ -136,7 +208,8 @@ export default function ChartRenderer({ spec }: { spec: VisualizationSpec }) {
   // 1. BAR CHART
   const renderBarChart = () => {
     return chartData.map((d, i) => {
-      const val = Number(d[y_axis_key]) || 0;
+      const val = getYValue(d as Record<string, unknown>);
+      const label = getXLabel(d as Record<string, unknown>);
       const x = scaleX(i) - barWidth / 2;
       const yZero = scaleY(0);
       const yVal = scaleY(val);
@@ -163,22 +236,34 @@ export default function ChartRenderer({ spec }: { spec: VisualizationSpec }) {
           {isHovered && (
             <g>
               <rect
-                x={x + barWidth / 2 - 38}
-                y={barTop - 30}
-                width={76}
-                height={22}
+                x={x + barWidth / 2 - 48}
+                y={barTop - 42}
+                width={96}
+                height={34}
                 rx={6}
                 fill="#0f172a"
+                className="drop-shadow-lg"
               />
               <text
                 x={x + barWidth / 2}
-                y={barTop - 15}
+                y={barTop - 26}
+                fontSize="10"
+                fill="#94a3b8"
+                textAnchor="middle"
+                fontWeight="500"
+              >
+                {label}
+              </text>
+              <text
+                x={x + barWidth / 2}
+                y={barTop - 13}
                 fontSize="11"
                 fill="#ffffff"
                 textAnchor="middle"
-                fontWeight="600"
+                fontWeight="700"
+                fontFamily="monospace"
               >
-                {val.toLocaleString()}
+                {formatValueLabel(val)}
               </text>
             </g>
           )}
@@ -189,7 +274,7 @@ export default function ChartRenderer({ spec }: { spec: VisualizationSpec }) {
 
   // 2. LINE CHART
   const renderLineChart = () => {
-    const points = chartData.map((d, i) => `${scaleX(i)},${scaleY(Number(d[y_axis_key]) || 0)}`).join(' ');
+    const points = chartData.map((d, i) => `${scaleX(i)},${scaleY(getYValue(d as Record<string, unknown>))}`).join(' ');
 
     return (
       <g>
@@ -202,7 +287,8 @@ export default function ChartRenderer({ spec }: { spec: VisualizationSpec }) {
           strokeLinejoin="round"
         />
         {chartData.map((d, i) => {
-          const val = Number(d[y_axis_key]) || 0;
+          const val = getYValue(d as Record<string, unknown>);
+          const label = getXLabel(d as Record<string, unknown>);
           const cx = scaleX(i);
           const cy = scaleY(val);
           const isHovered = hoveredIndex === i;
@@ -226,22 +312,34 @@ export default function ChartRenderer({ spec }: { spec: VisualizationSpec }) {
               {isHovered && (
                 <g>
                   <rect
-                    x={cx - 36}
-                    y={cy - 30}
-                    width={72}
-                    height={22}
+                    x={cx - 50}
+                    y={cy - 44}
+                    width={100}
+                    height={36}
                     rx={6}
                     fill="#0f172a"
+                    className="drop-shadow-lg"
                   />
                   <text
                     x={cx}
-                    y={cy - 15}
+                    y={cy - 28}
+                    fontSize="10"
+                    fill="#94a3b8"
+                    textAnchor="middle"
+                    fontWeight="500"
+                  >
+                    {label}
+                  </text>
+                  <text
+                    x={cx}
+                    y={cy - 14}
                     fontSize="11"
                     fill="#ffffff"
                     textAnchor="middle"
-                    fontWeight="600"
+                    fontWeight="700"
+                    fontFamily="monospace"
                   >
-                    {val.toLocaleString()}
+                    {formatValueLabel(val)}
                   </text>
                 </g>
               )}
@@ -254,7 +352,7 @@ export default function ChartRenderer({ spec }: { spec: VisualizationSpec }) {
 
   // 3. AREA CHART
   const renderAreaChart = () => {
-    const polyPoints = chartData.map((d, i) => `${scaleX(i)},${scaleY(Number(d[y_axis_key]) || 0)}`);
+    const polyPoints = chartData.map((d, i) => `${scaleX(i)},${scaleY(getYValue(d as Record<string, unknown>))}`);
     const lineString = polyPoints.join(' ');
     
     // Close polygon at baseline
@@ -281,7 +379,8 @@ export default function ChartRenderer({ spec }: { spec: VisualizationSpec }) {
           strokeLinejoin="round"
         />
         {chartData.map((d, i) => {
-          const val = Number(d[y_axis_key]) || 0;
+          const val = getYValue(d as Record<string, unknown>);
+          const label = getXLabel(d as Record<string, unknown>);
           const cx = scaleX(i);
           const cy = scaleY(val);
           const isHovered = hoveredIndex === i;
@@ -304,22 +403,34 @@ export default function ChartRenderer({ spec }: { spec: VisualizationSpec }) {
               {isHovered && (
                 <g>
                   <rect
-                    x={cx - 36}
-                    y={cy - 28}
-                    width={72}
-                    height={20}
-                    rx={5}
+                    x={cx - 50}
+                    y={cy - 44}
+                    width={100}
+                    height={36}
+                    rx={6}
                     fill="#0f172a"
+                    className="drop-shadow-lg"
                   />
                   <text
                     x={cx}
-                    y={cy - 14}
+                    y={cy - 28}
                     fontSize="10"
+                    fill="#94a3b8"
+                    textAnchor="middle"
+                    fontWeight="500"
+                  >
+                    {label}
+                  </text>
+                  <text
+                    x={cx}
+                    y={cy - 14}
+                    fontSize="11"
                     fill="#ffffff"
                     textAnchor="middle"
-                    fontWeight="600"
+                    fontWeight="700"
+                    fontFamily="monospace"
                   >
-                    {val.toLocaleString()}
+                    {formatValueLabel(val)}
                   </text>
                 </g>
               )}
@@ -341,13 +452,13 @@ export default function ChartRenderer({ spec }: { spec: VisualizationSpec }) {
     let accumulatedAngle = -Math.PI / 2;
 
     const slices = chartData.map((d, i) => {
-      const val = Math.max(Number(d[y_axis_key]) || 0, 0);
+      const val = Math.max(getYValue(d as Record<string, unknown>), 0);
+      const label = getXLabel(d as Record<string, unknown>);
       const sliceAngle = (val / total) * 2 * Math.PI;
       const startAngle = accumulatedAngle;
       const endAngle = accumulatedAngle + sliceAngle;
       accumulatedAngle += sliceAngle;
 
-      // Arc coordinates
       const x1 = centerX + radiusOuter * Math.cos(startAngle);
       const y1 = centerY + radiusOuter * Math.sin(startAngle);
       const x2 = centerX + radiusOuter * Math.cos(endAngle);
@@ -364,7 +475,7 @@ export default function ChartRenderer({ spec }: { spec: VisualizationSpec }) {
       return {
         pathData,
         color: PALETTE[i % PALETTE.length],
-        label: String(d[x_axis_key]),
+        label,
         val,
         percentage: ((val / total) * 100).toFixed(1),
       };

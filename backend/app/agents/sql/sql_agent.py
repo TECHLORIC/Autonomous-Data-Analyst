@@ -39,32 +39,17 @@ Rules:
 6. Use only columns available in the dataset profile.
 
 7. IMPORTANT DATE HANDLING:
-
    Dataset date columns may be stored as VARCHAR strings.
-
    NEVER assume that:
-
        CAST(date_column AS DATE)
-
    will work.
 
 8. If a date column contains values in DD-MM-YYYY format,
    parse it using:
-
-       strptime(
-           "date_column",
-           '%d-%m-%Y'
-       )
+       strptime("date_column", '%d-%m-%Y')
 
 9. For monthly grouping of a DD-MM-YYYY date column, use:
-
-       strftime(
-           strptime(
-               "date_column",
-               '%d-%m-%Y'
-           ),
-           '%Y-%m'
-       )
+       strftime(strptime("date_column", '%d-%m-%Y'), '%Y-%m')
 
 10. For YYYY-MM-DD date strings, CAST(... AS DATE) may be used.
 
@@ -75,6 +60,12 @@ Rules:
 
 13. Do not perform calculations yourself.
     Generate SQL that DuckDB can execute.
+
+14. ALWAYS use aggregation (SUM, AVG, COUNT, MIN, MAX) and GROUP BY when calculating totals, breakdowns, or performance metrics.
+
+15. Limit output to at most 20 rows using ORDER BY ... DESC LIMIT 20 for grouping tasks to prevent massive result sets.
+
+16. NEVER return raw "SELECT *" dumps when calculating analytics. Always select relevant columns and aggregates.
 
 Required format:
 
@@ -107,11 +98,7 @@ Dataset table:
 
 Dataset profile:
 
-{json.dumps(
-    dataset_profile,
-    indent=2,
-    default=str,
-)}
+{json.dumps(dataset_profile, default=str)}
 
 Analysis task:
 
