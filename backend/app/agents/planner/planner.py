@@ -54,6 +54,11 @@ Rules:
      * Step 4: Temporal trend (if date/year/month is present, group by timeframe/year/month).
    - ALWAYS specify aggregation (SUM, COUNT, AVG, GROUP BY) in SQL step descriptions. NEVER select unbounded raw rows without aggregation.
 
+9. For a specific question (e.g. "which segment and payment method has the highest return/cancellation rate and how much profit is lost"):
+   - Use ONE sql step that answers it directly. Group ONLY by the dimensions named in the question
+     (e.g. Customer_Segment, Payment_Method), compute rate and the loss amount in the same query,
+     and ORDER BY the rate DESC. Do NOT add extra grouping columns like Region or Category.
+
 For Python operations, use one of:
 
 describe

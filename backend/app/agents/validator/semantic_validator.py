@@ -35,6 +35,10 @@ Check:
 4. Is the result empty or obviously incomplete?
 5. Does the result contradict the requested analysis?
 
+Be lenient: mark valid=true if the results contain the metrics needed to
+answer the question, even if extra columns or rows are present. Only mark
+invalid if results are empty or clearly unrelated.
+
 Return ONLY valid JSON.
 
 Required format:

@@ -124,7 +124,9 @@ class AutonomousAnalysisGraph:
             {
                 "pass": "visualization",
                 "retry": "replan",
-                "stop": END,
+                # After retries are exhausted, still report best-effort results
+                # instead of ending with an empty dashboard.
+                "stop": "visualization",
             },
         )
 

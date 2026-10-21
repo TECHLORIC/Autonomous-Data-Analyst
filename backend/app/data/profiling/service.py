@@ -165,6 +165,14 @@ def profile_dataframe(
                 str(column)
             )
 
+            # Expose exact category values so SQL filters use real labels
+            # (e.g. 'Returned' rather than a guessed 'Return').
+            if column_info["unique"] <= 25:
+                column_info["top_values"] = [
+                    str(v)
+                    for v in series.dropna().value_counts().head(25).index
+                ]
+
         columns[str(column)] = column_info
 
     return {

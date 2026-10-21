@@ -67,6 +67,12 @@ Rules:
 
 16. NEVER return raw "SELECT *" dumps when calculating analytics. Always select relevant columns and aggregates.
 
+17. GROUP BY only the dimensions explicitly named in the task. Never add extra grouping columns.
+
+18. For rates, compute SUM(CASE WHEN ... THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS rate_pct.
+    For lost profit, SUM(CASE WHEN <bad status> THEN profit column ELSE 0 END).
+    Use the exact category values present in the profile (e.g. 'Returned', 'Cancelled').
+
 Required format:
 
 {
